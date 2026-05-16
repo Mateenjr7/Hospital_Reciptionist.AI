@@ -42,14 +42,22 @@ export default function Dashboard() {
   const [patientData, setPatientData] =
     useState(null);
 
+  const [patientName, setPatientName] =
+    useState("");
+
+  const [patientAge, setPatientAge] =
+    useState("");
+
   /* Send */
   const handleSend = () => {
 
     if (!input.trim()) return;
 
+    const userInput = input;
+
     const userMessage = {
       role: "user",
-      text: input
+      text: userInput
     };
 
     setMessages((prev) => [
@@ -57,45 +65,61 @@ export default function Dashboard() {
       userMessage
     ]);
 
-    const text =
-      input.toLowerCase();
-
     setInput("");
 
     setIsLoading(true);
 
     setTimeout(() => {
 
-      let botReply =
-        "Thank you. Your symptoms have been recorded.";
+      let botReply = "";
+      let nextStep = step;
+      let ward = "General Ward";
 
-      let ward =
-        "General Ward";
+      if (step === "collect_name") {
+        botReply = "Thank you. Please tell me your age.";
+        nextStep = "collect_age";
+        setPatientName(userInput);
+      } else if (step === "collect_age") {
+        botReply = "Please describe your symptoms or reason for visit.";
+        nextStep = "collect_query";
+        setPatientAge(userInput);
+      } else if (step === "collect_query") {
+        const lower = userInput.toLowerCase();
 
-      if (
-        text.includes("chest") ||
-        text.includes("breathing") ||
-        text.includes("blood")
-      ) {
+        const emergencyKeywords = [
+          "pain",
+          "blood",
+          "accident",
+          "breathing",
+          "heart"
+        ];
 
-        ward =
-          "Emergency Ward";
+        const mentalKeywords = [
+          "stress",
+          "depression",
+          "anxiety",
+          "panic"
+        ];
 
-        botReply =
-          "Emergency symptoms detected. Routing patient to Emergency Ward immediately.";
+        if (emergencyKeywords.some((k) => lower.includes(k))) {
+          ward = "Emergency Ward";
+        }
 
-      } else if (
-        text.includes("stress") ||
-        text.includes("anxiety") ||
-        text.includes("depression")
-      ) {
+        if (mentalKeywords.some((k) => lower.includes(k))) {
+          ward = "Mental Health Ward";
+        }
 
-        ward =
-          "Mental Health Ward";
+        botReply = `AI triage complete. You are assigned to ${ward}.`;
+        nextStep = "complete";
+        setIsComplete(true);
 
-        botReply =
-          "Mental health support detected. Routing patient to Mental Health Ward.";
-
+        setPatientData({
+          patient_name: patientName || "Patient User",
+          patient_age: patientAge || "N/A",
+          patient_query: userInput,
+          ward,
+          timestamp: new Date().toISOString()
+        });
       }
 
       setMessages((prev) => [
@@ -112,26 +136,7 @@ export default function Dashboard() {
         }
       ]);
 
-      setPatientData({
-        patient_name:
-          "Patient User",
-
-        patient_age:
-          24,
-
-        patient_query:
-          input,
-
-        ward,
-
-        timestamp:
-          new Date().toISOString()
-      });
-
-      setIsComplete(true);
-
-      setStep("complete");
-
+      setStep(nextStep);
       setIsLoading(false);
 
     }, 1400);
@@ -148,11 +153,10 @@ export default function Dashboard() {
     ]);
 
     setInput("");
-
     setIsComplete(false);
-
     setPatientData(null);
-
+    setPatientName("");
+    setPatientAge("");
     setStep("collect_name");
 
     setTimeout(() => {
@@ -447,7 +451,13 @@ export default function Dashboard() {
                       handleSend();
                     }
                   }}
-                  placeholder="Describe symptoms or patient issue..."
+                  placeholder={
+                    step === "collect_name"
+                      ? "Enter patient name..."
+                      : step === "collect_age"
+                      ? "Enter patient age..."
+                      : "Describe symptoms or patient issue..."
+                  }
                   className="flex-1 bg-transparent py-5 outline-none text-sm text-slate-700 placeholder-slate-400"
                 />
 
